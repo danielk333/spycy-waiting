@@ -2,38 +2,14 @@ import argparse
 import subprocess
 import threading
 import shlex
+import random
+import time
 import curses
 import cursedspace
-from cursedspace import Application, Key, Panel, colors, Grid, ProgressBar
+from cursedspace import Application, Key, Panel, Grid, ProgressBar
 
-# refresh time in ms
-UPDATE_RATE = 300
-
-COLOR_MAPPING = {
-    'text': (1, 0), 
-    'title': (2, 0),
-    'player': (2, 0),
-    'enemy': (3, 0),
-    'terrain': (4, 0),
-}
-COLORS = {key: colors.ColorPair(*x) for key, x in COLOR_MAPPING.items()}
-
-
-#SHAPES = {
-#    'invader':'''
-# ██
-#█  █
-#''',
-#'player':'''
-#  █
-#█████
-#'''
-#}
-
-
-def color(key):
-    return colors.attr(COLORS[key])
-
+from .config import color, UPDATE_RATE
+from . import shapes
 
 def read_pipe(proc, output):
     for line in iter(proc.stdout.readline, b''):
@@ -65,7 +41,7 @@ class Process(Panel):
 
 
     def paint(self, **kwargs):
-        super().paint(clear=True)
+        super().paint(clear=False)
 
         if self.process is None:
             self.init()
@@ -95,13 +71,38 @@ class Process(Panel):
         self.win.noutrefresh()
 
 
-class Invaders(Panel):
+class FightInvaders(Panel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.player = shapes.Player(None, 'player')
+        self.invaders = [
+            shapes.Invader(None, 'enemy')
+            for j in range(3)
+        ]
+        self.shots = []
 
-    def paint(self, clear=False):
-        super().paint(clear)
-        self.win.addstr(1, 1, "HELLO")
+
+    def setup(self):
+        inv_num = len(self.invaders)
+        y, x, h, w = self.content_area()
+
+        for i, inv in enumerate(self.invaders):
+            inv.pos = [3, x + i*w//inv_num]
+        self.player.pos = [h - 2, (w + self.player.SIZE[1])//2]
+
+
+    def paint(self, **kwargs):
+        super().paint(clear=True)
+        
+        y, x, h, w = self.content_area()
+
+        for inv in self.invaders:
+            inv.draw(self.win, x, y, h, w)
+
+        for s in self.shots:
+            self.win.addstr(s[0], s[1], shapes.Shot, color('shot'))
+
+        self.player.draw(self.win, x, y, h, w)
         self.win.noutrefresh()
 
 
@@ -113,7 +114,7 @@ class Game(Application):
         self.grid.add_panel(
             0, 0, 
             key='game', 
-            panel_class=Invaders,
+            panel_class=FightInvaders,
         )
         self.grid.add_panel(
             0, 1, 
@@ -121,6 +122,8 @@ class Game(Application):
             panel_class=Process,
             args=(cmd, ),
         )
+        self.next_move = 0
+        self.shot = False
 
         for panel in self.grid.panels:
             panel.border = cursedspace.Panel.BORDER_ALL
@@ -129,10 +132,45 @@ class Game(Application):
         self.grid.paint()
         curses.doupdate()
 
+    def update_state(self):
+        y, x, h, w = self.grid['game'].content_area()
+        p = self.grid['game'].player
+        
+        pop_inds = []
+        for si, s in enumerate(self.grid['game'].shots):
+            s[0] -= 1
+            if s[0] < y:
+                pop_inds.append(si)
+        for si in pop_inds[::-1]:
+            self.grid['game'].shots.pop(si)
+
+
+        if self.shot:
+            self.grid['game'].shots.append([
+                h - 4,
+                p.pos[1] + p.SIZE[1]//2 + 1,
+            ])
+            self.shot = False
+
+        p.pos[1] += self.next_move
+        self.next_move = 0
+
+        for inv in self.grid['game'].invaders:
+            if inv.pos[1] + inv.direction > w - inv.SIZE[1]:
+                inv.direction = -1
+            elif inv.pos[1] + inv.direction < 0:
+                inv.direction = 1
+            
+            inv.pos[1] += inv.direction
+
+
     def main(self):
         self.resize()
-        self.screen.timeout(UPDATE_RATE)
+        self.screen.timeout(int(UPDATE_RATE*1e3))
         self.show_cursor(False)
+
+        self.grid['game'].setup()
+        t0 = time.monotonic()
 
         while True:
             self.draw()
@@ -141,8 +179,25 @@ class Game(Application):
 
             if key == Key.RESIZE:
                 self.resize()
+            elif key == "<left>":
+                self.next_move = -1
+            elif key == "<right>":
+                self.next_move = 1
+            elif key == "<down>":
+                self.next_move = 0
+            elif key == "<up>":
+                self.shot = True
             elif key in [Key.ESCAPE, "q", "^C"]:
                 break
+
+            t1 = time.monotonic()
+            dt = t1 - t0
+            if dt > UPDATE_RATE:
+                t0 = t1
+                self.update_state()
+            else:
+                time.sleep((UPDATE_RATE - dt)*0.5)
+                
 
     def resize(self):
         height, width = self.size()
