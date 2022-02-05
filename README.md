@@ -1,3 +1,3 @@
 # spycy-invaders
 
-this is a readme
+To use just type `invasion` before any bash command!
