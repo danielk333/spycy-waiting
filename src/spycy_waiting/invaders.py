@@ -17,7 +17,7 @@ class SpaceInvaders(Panel):
         self.next_move = 0
         self.shot = False
 
-    def handle_key(self, key):
+    def handle_input(self, key):
         if key == "<left>":
             self.next_move = -1
         elif key == "<right>":

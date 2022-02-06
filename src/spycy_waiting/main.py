@@ -137,7 +137,7 @@ class Game(Application):
             if self.quit_now:
                 break
 
-            self.grid['game'].handle_key(key)
+            self.grid['game'].handle_input(key)
 
             t1 = time.monotonic()
             dt = t1 - t0
