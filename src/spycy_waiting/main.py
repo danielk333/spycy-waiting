@@ -133,7 +133,7 @@ class Game(Application):
                 self.resize()
             elif key in [Key.ESCAPE, "q", "^C"]:
                 break
-            
+
             if self.quit_now:
                 break
 
@@ -158,6 +158,7 @@ def run():
     parser = argparse.ArgumentParser(description='Wait excitingly!')
     parser.add_argument('-q', '--auto-quit', action='store_true', help='Quit game automatically when process finishes')
     parser.add_argument('-g', '--game', default='wordle', choices=list(GAMES.keys()), help='Game to play')
+    parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout, help='Output process communication to this file, otherwise to stdout')
     parser.add_argument('cmd', type=str, help='The command to execute while blastin')
 
     args = parser.parse_args()
@@ -179,11 +180,11 @@ def run():
                 print(c.pop(0).decode().strip())
         while len(c) > 0:
             print(c.pop(0).decode().strip())
-
-    print('=== COMMAND OUTPUT ===\n')
+    if args.output == sys.stdout:
+        print('=== COMMAND OUTPUT ===\n')
     waiter.grid['proc'].cache_file.seek(0)
     for line in waiter.grid['proc'].cache_file:
-        print(line.decode().strip())
+        args.output.write(line.decode())
     
     if waiter.grid['proc'].reader is not None:
         waiter.grid['proc'].reader.join()
