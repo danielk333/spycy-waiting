@@ -1,0 +1,3 @@
+
+class Wordle:
+    pass

@@ -55,5 +55,3 @@ class Invader(Shape):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.direction = 1
-
-Shot = '↑'

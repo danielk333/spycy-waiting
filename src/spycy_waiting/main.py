@@ -13,6 +13,12 @@ from cursedspace import Application, Key, Panel, Grid, ProgressBar
 from .config import color, UPDATE_RATE
 from . import shapes
 from .invaders import SpaceInvaders
+from .wordle import Wordle
+
+GAMES ={
+    'space-invaders': SpaceInvaders,
+    'wordle': Wordle,
+}
 
 
 def read_pipe(proc, output, cache_file):
@@ -63,6 +69,8 @@ class Process(Panel):
         if self.reader.is_alive():
             status = 'Process: Running...'
         else:
+            if self.app.auto_quit:
+                self.app.quit_now = True
             status = 'Process: Finished'
         status = status.center(w, ' ')
         self.win.addstr(y, x, status[:w], title_attr)
@@ -83,14 +91,16 @@ class Process(Panel):
 
 
 class Game(Application):
-    def __init__(self, cmd):
+    def __init__(self, cmd, game, auto_quit):
         super().__init__()
+        self.auto_quit = auto_quit
+        self.quit_now = False
         self.grid = Grid(self, rows=1, cols=2)
 
         self.grid.add_panel(
             0, 0, 
             key='game', 
-            panel_class=SpaceInvaders,
+            panel_class=GAMES[game],
         )
         self.grid.add_panel(
             0, 1, 
@@ -98,8 +108,6 @@ class Game(Application):
             panel_class=Process,
             args=(cmd, ),
         )
-        self.next_move = 0
-        self.shot = False
 
         for panel in self.grid.panels:
             panel.border = cursedspace.Panel.BORDER_ALL
@@ -107,38 +115,6 @@ class Game(Application):
     def draw(self):
         self.grid.paint()
         curses.doupdate()
-
-    def update_state(self):
-        y, x, h, w = self.grid['game'].content_area()
-        p = self.grid['game'].player
-        
-        pop_inds = []
-        for si, s in enumerate(self.grid['game'].shots):
-            s[0] -= 1
-            if s[0] < y:
-                pop_inds.append(si)
-        for si in pop_inds[::-1]:
-            self.grid['game'].shots.pop(si)
-
-
-        if self.shot:
-            self.grid['game'].shots.append([
-                h - 4,
-                p.pos[1] + p.SIZE[1]//2 + 1,
-            ])
-            self.shot = False
-
-        p.pos[1] += self.next_move
-        self.next_move = 0
-
-        for inv in self.grid['game'].invaders:
-            if inv.pos[1] + inv.direction > w - inv.SIZE[1]:
-                inv.direction = -1
-            elif inv.pos[1] + inv.direction < 0:
-                inv.direction = 1
-            
-            inv.pos[1] += inv.direction
-
 
     def main(self):
         self.resize()
@@ -155,22 +131,19 @@ class Game(Application):
 
             if key == Key.RESIZE:
                 self.resize()
-            elif key == "<left>":
-                self.next_move = -1
-            elif key == "<right>":
-                self.next_move = 1
-            elif key == "<down>":
-                self.next_move = 0
-            elif key == "<up>":
-                self.shot = True
             elif key in [Key.ESCAPE, "q", "^C"]:
                 break
+            
+            if self.quit_now:
+                break
+
+            self.grid['game'].handle_key(key)
 
             t1 = time.monotonic()
             dt = t1 - t0
             if dt > UPDATE_RATE:
                 t0 = t1
-                self.update_state()
+                self.grid['game'].update_state()
             else:
                 time.sleep((UPDATE_RATE - dt)*0.5)
                 
@@ -182,9 +155,9 @@ class Game(Application):
 
 def run():
 
-    parser = argparse.ArgumentParser(description='Fight off the invaders!')
-    parser.add_argument('-q', '--auto-quit', action='store_true', help='X')
-    parser.add_argument('--test', default=1.0, type=float, help='X')
+    parser = argparse.ArgumentParser(description='Wait excitingly!')
+    parser.add_argument('-q', '--auto-quit', action='store_true', help='Quit game automatically when process finishes')
+    parser.add_argument('-g', '--game', default='wordle', choices=list(GAMES.keys()), help='Game to play')
     parser.add_argument('cmd', type=str, help='The command to execute while blastin')
 
     args = parser.parse_args()
@@ -193,6 +166,8 @@ def run():
 
     waiter = Game(
         cmd = cmd,
+        game = args.game,
+        auto_quit = args.auto_quit,
     )
 
     waiter.run()
