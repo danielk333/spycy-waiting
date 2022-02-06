@@ -14,5 +14,5 @@ def get_version(path):
             raise RuntimeError("Unable to find version string.")
 
 setuptools.setup(
-    version=get_version(HERE / 'src' / 'spycy_invaders' / 'version.py'),
+    version=get_version(HERE / 'src' / 'spycy_waiting' / 'version.py'),
 )
