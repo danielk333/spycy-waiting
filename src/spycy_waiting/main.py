@@ -4,17 +4,22 @@ import threading
 import shlex
 import random
 import time
+import sys
 import curses
 import cursedspace
+import tempfile
 from cursedspace import Application, Key, Panel, Grid, ProgressBar
 
 from .config import color, UPDATE_RATE
 from . import shapes
+from .invaders import SpaceInvaders
 
-def read_pipe(proc, output):
+
+def read_pipe(proc, output, cache_file):
     for line in iter(proc.stdout.readline, b''):
         if len(line) > 0:
             output.append(line)
+            cache_file.write(line)
 
 
 class Process(Panel):
@@ -33,9 +38,15 @@ class Process(Panel):
         )
         self.content = []
 
+        self.cache_file = tempfile.TemporaryFile()
+
         self.reader = threading.Thread(
             target=read_pipe, 
-            args=(self.process, self.content),
+            args=(
+                self.process, 
+                self.content,
+                self.cache_file,
+            ),
         )
         self.reader.start()
 
@@ -71,41 +82,6 @@ class Process(Panel):
         self.win.noutrefresh()
 
 
-class FightInvaders(Panel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.player = shapes.Player(None, 'player')
-        self.invaders = [
-            shapes.Invader(None, 'enemy')
-            for j in range(3)
-        ]
-        self.shots = []
-
-
-    def setup(self):
-        inv_num = len(self.invaders)
-        y, x, h, w = self.content_area()
-
-        for i, inv in enumerate(self.invaders):
-            inv.pos = [3, x + i*w//inv_num]
-        self.player.pos = [h - 2, (w + self.player.SIZE[1])//2]
-
-
-    def paint(self, **kwargs):
-        super().paint(clear=True)
-        
-        y, x, h, w = self.content_area()
-
-        for inv in self.invaders:
-            inv.draw(self.win, x, y, h, w)
-
-        for s in self.shots:
-            self.win.addstr(s[0], s[1], shapes.Shot, color('shot'))
-
-        self.player.draw(self.win, x, y, h, w)
-        self.win.noutrefresh()
-
-
 class Game(Application):
     def __init__(self, cmd):
         super().__init__()
@@ -114,7 +90,7 @@ class Game(Application):
         self.grid.add_panel(
             0, 0, 
             key='game', 
-            panel_class=FightInvaders,
+            panel_class=SpaceInvaders,
         )
         self.grid.add_panel(
             0, 1, 
@@ -215,18 +191,25 @@ def run():
 
     cmd = shlex.split(args.cmd)
 
-    invasion = Game(
+    waiter = Game(
         cmd = cmd,
     )
 
-    invasion.run()
-
-    c = invasion.grid['proc'].content
-    while invasion.grid['proc'].reader.is_alive():
+    waiter.run()
+    
+    c = waiter.grid['proc'].content
+    if waiter.grid['proc'].reader.is_alive():
+        while waiter.grid['proc'].reader.is_alive():
+            while len(c) > 0:
+                print(c.pop(0).decode().strip())
         while len(c) > 0:
             print(c.pop(0).decode().strip())
-    while len(c) > 0:
-        print(c.pop(0).decode().strip())
+
+    print('=== COMMAND OUTPUT ===\n')
+    waiter.grid['proc'].cache_file.seek(0)
+    for line in waiter.grid['proc'].cache_file:
+        print(line.decode().strip())
     
-    if invasion.grid['proc'].reader is not None:
-        invasion.grid['proc'].reader.join()
+    if waiter.grid['proc'].reader is not None:
+        waiter.grid['proc'].reader.join()
+        waiter.grid['proc'].cache_file.close()
