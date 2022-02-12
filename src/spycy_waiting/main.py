@@ -16,8 +16,8 @@ from .crusaders import Crusaders
 from .wordle import Wordle
 
 GAMES = OrderedDict(
-    crusaders = Crusaders,
     wordle = Wordle,
+    crusaders = Crusaders,
 )
 
 
@@ -90,10 +90,11 @@ class Process(Panel):
 
 
 class Game(Application):
-    def __init__(self, cmd, game, auto_quit, refresh_rate):
+    def __init__(self, cmd, game, auto_quit, refresh_rate, output):
         super().__init__()
         self.auto_quit = auto_quit
         self.refresh_rate = refresh_rate
+        self.output = output
         self.quit_now = False
         self.grid = Grid(self, rows=1, cols=2)
 
@@ -146,7 +147,30 @@ class Game(Application):
                 self.grid['game'].update_state()
             else:
                 time.sleep((self.refresh_rate - dt)*0.5)
-                
+
+    def cleanup(self):
+        c = self.grid['proc'].content
+        process_done = False if self.grid['proc'].reader.is_alive() else True
+
+        while not process_done:
+            while len(c) > 0:
+                print(c.pop(0).decode().strip())
+            process_done = False if self.grid['proc'].reader.is_alive() else True
+
+        while len(c) > 0:
+            print(c.pop(0).decode().strip())
+
+        if self.output == sys.stdout:
+            print('=== COMPLETE COMMAND OUTPUT ===\n')
+
+        self.grid['proc'].cache_file.seek(0)
+        for line in self.grid['proc'].cache_file:
+            self.output.write(line.decode())
+            
+        if self.grid['proc'].reader is not None:
+            self.grid['proc'].reader.join()
+            self.grid['proc'].cache_file.close()
+
     def resize(self):
         height, width = self.size()
         self.grid.resize(height, width)
@@ -193,25 +217,8 @@ def run():
         game = args.game,
         auto_quit = args.auto_quit,
         refresh_rate = args.refresh_rate,
+        output = args.output,
     )
 
     waiter.run()
-    
-    c = waiter.grid['proc'].content
-    if waiter.grid['proc'].reader.is_alive():
-        while waiter.grid['proc'].reader.is_alive():
-            while len(c) > 0:
-                print(c.pop(0).decode().strip())
-        while len(c) > 0:
-            print(c.pop(0).decode().strip())
-    
-    if args.output == sys.stdout:
-        print('=== COMMAND OUTPUT ===\n')
-
-    waiter.grid['proc'].cache_file.seek(0)
-    for line in waiter.grid['proc'].cache_file:
-        args.output.write(line.decode())
-    
-    if waiter.grid['proc'].reader is not None:
-        waiter.grid['proc'].reader.join()
-        waiter.grid['proc'].cache_file.close()
+    waiter.cleanup()
