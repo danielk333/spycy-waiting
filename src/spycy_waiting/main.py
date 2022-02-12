@@ -2,23 +2,23 @@ import argparse
 import subprocess
 import threading
 import shlex
-import random
 import time
 import sys
 import curses
 import cursedspace
 import tempfile
-from cursedspace import Application, Key, Panel, Grid, ProgressBar
+from collections import OrderedDict
 
-from .config import color, UPDATE_RATE
-from . import shapes
-from .invaders import SpaceInvaders
+from cursedspace import Application, Key, Panel, Grid
+
+from .config import color
+from .crusaders import Crusaders
 from .wordle import Wordle
 
-GAMES ={
-    'space-invaders': SpaceInvaders,
-    'wordle': Wordle,
-}
+GAMES = OrderedDict(
+    crusaders = Crusaders,
+    wordle = Wordle,
+)
 
 
 def read_pipe(proc, output, cache_file):
@@ -56,7 +56,6 @@ class Process(Panel):
         )
         self.reader.start()
 
-
     def paint(self, **kwargs):
         super().paint(clear=False)
 
@@ -91,9 +90,10 @@ class Process(Panel):
 
 
 class Game(Application):
-    def __init__(self, cmd, game, auto_quit):
+    def __init__(self, cmd, game, auto_quit, refresh_rate):
         super().__init__()
         self.auto_quit = auto_quit
+        self.refresh_rate = refresh_rate
         self.quit_now = False
         self.grid = Grid(self, rows=1, cols=2)
 
@@ -118,7 +118,7 @@ class Game(Application):
 
     def main(self):
         self.resize()
-        self.screen.timeout(int(UPDATE_RATE*1e3))
+        self.screen.timeout(int(self.refresh_rate*1e3))
         self.show_cursor(False)
 
         self.grid['game'].setup()
@@ -141,13 +141,12 @@ class Game(Application):
 
             t1 = time.monotonic()
             dt = t1 - t0
-            if dt > UPDATE_RATE:
+            if dt > self.refresh_rate:
                 t0 = t1
                 self.grid['game'].update_state()
             else:
-                time.sleep((UPDATE_RATE - dt)*0.5)
+                time.sleep((self.refresh_rate - dt)*0.5)
                 
-
     def resize(self):
         height, width = self.size()
         self.grid.resize(height, width)
@@ -155,11 +154,35 @@ class Game(Application):
 
 def run():
 
+    GAME_LIST = list(GAMES.keys())
+
     parser = argparse.ArgumentParser(description='Wait excitingly!')
-    parser.add_argument('-q', '--auto-quit', action='store_true', help='Quit game automatically when process finishes')
-    parser.add_argument('-g', '--game', default='wordle', choices=list(GAMES.keys()), help='Game to play')
-    parser.add_argument('-o', '--output', type=argparse.FileType('w'), default=sys.stdout, help='Output process communication to this file, otherwise to stdout')
-    parser.add_argument('cmd', type=str, help='The command to execute while blastin')
+    parser.add_argument(
+        '-q', '--auto-quit', 
+        action='store_true', 
+        help='Quit game automatically when process finishes',
+    )
+    parser.add_argument(
+        '-r', '--refresh-rate', 
+        default=0.3, 
+        choices=GAME_LIST, help='Time in seconds between game refreshes',
+    )
+    parser.add_argument(
+        '-g', '--game', 
+        default=GAME_LIST[0], 
+        choices=GAME_LIST, help='Game to play',
+    )
+    parser.add_argument(
+        '-o', '--output', 
+        type=argparse.FileType('w'), 
+        default=sys.stdout, 
+        help='Output process communication to this file, otherwise to stdout',
+    )
+    parser.add_argument(
+        'cmd', 
+        type=str, 
+        help='The command to execute while blastin',
+    )
 
     args = parser.parse_args()
 
@@ -169,6 +192,7 @@ def run():
         cmd = cmd,
         game = args.game,
         auto_quit = args.auto_quit,
+        refresh_rate = args.refresh_rate,
     )
 
     waiter.run()
@@ -180,8 +204,10 @@ def run():
                 print(c.pop(0).decode().strip())
         while len(c) > 0:
             print(c.pop(0).decode().strip())
+    
     if args.output == sys.stdout:
         print('=== COMMAND OUTPUT ===\n')
+
     waiter.grid['proc'].cache_file.seek(0)
     for line in waiter.grid['proc'].cache_file:
         args.output.write(line.decode())

@@ -1,8 +1,5 @@
 from cursedspace import colors
 
-# refresh time in s
-UPDATE_RATE = 0.300
-
 COLOR_MAPPING = {
     'text': (1, 0), 
     'title': (2, 0),

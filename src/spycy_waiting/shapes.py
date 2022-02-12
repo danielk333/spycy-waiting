@@ -1,5 +1,6 @@
 from .config import color
 
+
 class Shape:
     SIZE = None
     TEXTURE = None
@@ -44,6 +45,7 @@ class Player(Shape):
         '  █  ',
         '█████',
     )
+
 
 class Invader(Shape):
     SIZE = (2, 5)

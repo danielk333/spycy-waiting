@@ -31,5 +31,5 @@ waiting ./example.sh
 or more verbosly, picking the game as well
 
 ```bash
-waiting -g space-invaders  -- ./example.sh
+waiting -g wordle -- ./example.sh
 ```

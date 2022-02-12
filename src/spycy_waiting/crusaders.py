@@ -4,8 +4,7 @@ from . import shapes
 from .config import color
 
 
-
-class SpaceInvaders(Panel):
+class Crusaders(Panel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.player = shapes.Player(None, 'player')
@@ -39,7 +38,6 @@ class SpaceInvaders(Panel):
         for si in pop_inds[::-1]:
             self.shots.pop(si)
 
-
         if self.shot:
             self.shots.append([
                 h - 4,
@@ -58,7 +56,6 @@ class SpaceInvaders(Panel):
             
             inv.pos[1] += inv.direction
 
-
     def setup(self):
         inv_num = len(self.invaders)
         y, x, h, w = self.content_area()
@@ -66,7 +63,6 @@ class SpaceInvaders(Panel):
         for i, inv in enumerate(self.invaders):
             inv.pos = [3, x + i*w//inv_num]
         self.player.pos = [h - 2, (w + self.player.SIZE[1])//2]
-
 
     def paint(self, **kwargs):
         super().paint(clear=True)
