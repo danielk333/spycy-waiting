@@ -30,6 +30,7 @@ def read_pipe(proc, output, cache_file):
 
 class Process(Panel):
     def __init__(self, app, cmd, **kwargs):
+        self.auto_quit = kwargs.pop('auto_quit')
         super().__init__(app, **kwargs)
         self.cmd = cmd
         self.process = None
@@ -68,7 +69,7 @@ class Process(Panel):
         if self.reader.is_alive():
             status = 'Process: Running...'
         else:
-            if self.app.auto_quit:
+            if self.auto_quit:
                 self.app.quit_now = True
             status = 'Process: Finished'
         status = status.center(w, ' ')
@@ -90,24 +91,32 @@ class Process(Panel):
 
 
 class Game(Application):
-    def __init__(self, cmd, game, auto_quit, refresh_rate, output):
+    def __init__(self, cmd, args):
         super().__init__()
-        self.auto_quit = auto_quit
-        self.refresh_rate = refresh_rate
-        self.output = output
+        self.args = args
         self.quit_now = False
-        self.grid = Grid(self, rows=1, cols=2)
+
+        coords = {'game': (0, 0)}
+        if self.args.horizontal_split:
+            grid_cfg = dict(rows=2, cols=1)
+            coords['proc'] = (1, 0)
+        else:
+            grid_cfg = dict(rows=1, cols=2)
+            coords['proc'] = (0, 1)
+
+        self.grid = Grid(self, **grid_cfg)
 
         self.grid.add_panel(
-            0, 0, 
+            *coords['game'], 
             key='game', 
-            panel_class=GAMES[game],
+            panel_class=GAMES[self.args.game],
         )
         self.grid.add_panel(
-            0, 1, 
+            *coords['proc'], 
             key='proc', 
             panel_class=Process,
             args=(cmd, ),
+            kwargs={'auto_quit': self.args.auto_quit},
         )
 
         for panel in self.grid.panels:
@@ -119,7 +128,7 @@ class Game(Application):
 
     def main(self):
         self.resize()
-        self.screen.timeout(int(self.refresh_rate*1e3))
+        self.screen.timeout(int(self.args.refresh_rate*1e3))
         self.show_cursor(False)
 
         self.grid['game'].setup()
@@ -142,11 +151,11 @@ class Game(Application):
 
             t1 = time.monotonic()
             dt = t1 - t0
-            if dt > self.refresh_rate:
+            if dt > self.args.refresh_rate:
                 t0 = t1
                 self.grid['game'].update_state()
             else:
-                time.sleep((self.refresh_rate - dt)*0.5)
+                time.sleep((self.args.refresh_rate - dt)*0.5)
 
     def cleanup(self):
         c = self.grid['proc'].content
@@ -160,12 +169,12 @@ class Game(Application):
         while len(c) > 0:
             print(c.pop(0).decode().strip())
 
-        if self.output == sys.stdout:
+        if self.args.output == sys.stdout:
             print('=== COMPLETE COMMAND OUTPUT ===\n')
 
         self.grid['proc'].cache_file.seek(0)
         for line in self.grid['proc'].cache_file:
-            self.output.write(line.decode())
+            self.args.output.write(line.decode())
             
         if self.grid['proc'].reader is not None:
             self.grid['proc'].reader.join()
@@ -197,6 +206,11 @@ def run():
         choices=GAME_LIST, help='Game to play',
     )
     parser.add_argument(
+        '-hsplit', '--horizontal-split', 
+        action='store_true', 
+        help='Split the screen horizontally instead of vertically',
+    )
+    parser.add_argument(
         '-o', '--output', 
         type=argparse.FileType('w'), 
         default=sys.stdout, 
@@ -214,10 +228,7 @@ def run():
 
     waiter = Game(
         cmd = cmd,
-        game = args.game,
-        auto_quit = args.auto_quit,
-        refresh_rate = args.refresh_rate,
-        output = args.output,
+        args = args,
     )
 
     waiter.run()
