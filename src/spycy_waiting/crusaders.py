@@ -1,10 +1,10 @@
-from cursedspace import Panel
+import cursedspace as cs
 
 from . import shapes
 from .config import color
 
 
-class Crusaders(Panel):
+class Crusaders(cs.Panel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.player = shapes.Player(None, 'player')
@@ -73,7 +73,7 @@ class Crusaders(Panel):
             inv.draw(self.win, x, y, h, w)
 
         for s in self.shots:
-            self.win.addstr(s[0], s[1], '↑', color('shot'))
+            self.win.addstr(s[0], s[1], '↑', color('player'))
 
         self.player.draw(self.win, x, y, h, w)
         self.win.noutrefresh()

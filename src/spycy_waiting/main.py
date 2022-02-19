@@ -9,7 +9,7 @@ import cursedspace
 import tempfile
 from collections import OrderedDict
 
-from cursedspace import Application, Key, Panel, Grid
+import cursedspace as cs
 
 from .config import color
 from .crusaders import Crusaders
@@ -20,6 +20,8 @@ GAMES = OrderedDict(
     crusaders = Crusaders,
 )
 
+QUIT_KEYS = [cs.Key.ESCAPE, "^Q"]
+
 
 def read_pipe(proc, output, cache_file):
     for line in iter(proc.stdout.readline, b''):
@@ -28,7 +30,7 @@ def read_pipe(proc, output, cache_file):
             cache_file.write(line)
 
 
-class Process(Panel):
+class Process(cs.Panel):
     def __init__(self, app, cmd, **kwargs):
         self.auto_quit = kwargs.pop('auto_quit')
         super().__init__(app, **kwargs)
@@ -73,9 +75,13 @@ class Process(Panel):
                 self.app.quit_now = True
             status = 'Process: Finished'
         status = status.center(w, ' ')
-        self.win.addstr(y, x, status[:w], title_attr)
-        h -= 1
-        y += 1
+        help_str = 'To quit (does not abort process), press:'
+        self.win.addstr(y, x, help_str[:w], color('text'))
+        help_str = ' '.join([str(x) for x in QUIT_KEYS])
+        self.win.addstr(y + 1, x, help_str[:w], color('key'))
+        self.win.addstr(y + 2, x, status[:w], title_attr)
+        h -= 3
+        y += 3
 
         if len(self.content) > h:
             num = h
@@ -90,7 +96,7 @@ class Process(Panel):
         self.win.noutrefresh()
 
 
-class Game(Application):
+class Game(cs.Application):
     def __init__(self, cmd, args):
         super().__init__()
         self.args = args
@@ -104,7 +110,7 @@ class Game(Application):
             grid_cfg = dict(rows=1, cols=2)
             coords['proc'] = (0, 1)
 
-        self.grid = Grid(self, **grid_cfg)
+        self.grid = cs.Grid(self, **grid_cfg)
 
         self.grid.add_panel(
             *coords['game'], 
@@ -139,9 +145,9 @@ class Game(Application):
             
             key = self.read_key()
 
-            if key == Key.RESIZE:
+            if key == cs.Key.RESIZE:
                 self.resize()
-            elif key in [Key.ESCAPE, "q", "^C"]:
+            elif key in (QUIT_KEYS + ["^C"]):
                 break
 
             if self.quit_now:
