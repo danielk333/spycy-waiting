@@ -1,7 +1,6 @@
 import curses
 import pathlib
 import configparser
-import os
 
 try:
     from xdg import BaseDirectory
@@ -12,10 +11,10 @@ from cursedspace import colors
 
 PROGRAMNAME = 'spycy_waiting'
 HOME = pathlib.Path.home()
-CONFIGDIR = HOME / ".config" / PROGRAMNAME
+CONFIGDIR = HOME / ".config"
 if BaseDirectory is not None:
     CONFIGDIR = pathlib.Path(BaseDirectory.save_config_path(PROGRAMNAME) or CONFIGDIR)
-CONFIGFILE = CONFIGDIR / (PROGRAMNAME + ".conf")
+CONFIGFILE = (CONFIGDIR / (PROGRAMNAME + ".conf")).resolve()
 
 DEFAULT_CONFIG = {
     'General': {
@@ -32,10 +31,11 @@ DEFAULT_CONFIG = {
 
 config = configparser.ConfigParser(interpolation=None)
 config.read_dict(DEFAULT_CONFIG)
-conffile = pathlib.Path(os.path.abspath(os.path.expanduser(CONFIGFILE)))
+if CONFIGFILE.exists() and CONFIGFILE.is_file():
+    config.read([CONFIGFILE])
 
-if conffile.exists() and conffile.is_file():
-    config.read([conffile])
+with open('/home/danielk/git/spycy-waiting/spycy_waiting.conf', 'w') as configfile:
+    config.write(configfile)
 
 DEFAULT_BACKGROUND = config.getint('General', 'default-background-color')
 
