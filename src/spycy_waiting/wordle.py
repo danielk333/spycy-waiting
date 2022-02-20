@@ -5,7 +5,8 @@ import curses
 import cursedspace as cs
 from cursedspace import Key
 
-from .config import color, box
+from .config import color
+from .shapes import box
 
 
 class Wordle(cs.Panel):
@@ -30,9 +31,9 @@ class Wordle(cs.Panel):
         y, x, h, w = info
 
         info_str = 'Correct letter, not position'.center(w, ' ')
-        self.win.addstr(y, x, info_str[:w], color('word_correct_letter'))
+        self.win.addstr(y, x, info_str[:w], color('correct-letter'))
         info_str = 'Correct letter AND position'.center(w, ' ')
-        self.win.addstr(y + 1, x, info_str[:w], color('word_correct_place'))
+        self.win.addstr(y + 1, x, info_str[:w], color('correct-place'))
 
         title_attr = curses.A_BOLD | curses.A_UNDERLINE | color('text')
         self.win.addstr(y + 2, x, ' '*w, title_attr)
@@ -71,9 +72,9 @@ class Wordle(cs.Panel):
                 guess_str = self.guesses[ind]
                 for cind, (tchar, gchar) in enumerate(zip(self.target_word, guess_str)):
                     if gchar == tchar:
-                        g_attr = color('word_correct_place')
+                        g_attr = color('correct-place')
                     elif gchar in self.target_word:
-                        g_attr = color('word_correct_letter')
+                        g_attr = color('correct-letter')
                     else:
                         g_attr = color('text')
 

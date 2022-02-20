@@ -1,6 +1,11 @@
 from .config import color
 
 
+BORDER_CORNER = '┌┐┘└'
+BORDER_VERT = '│'
+BORDER_HORIZ = '─'
+
+
 class Shape:
     SIZE = None
     TEXTURE = None
@@ -57,3 +62,16 @@ class Invader(Shape):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.direction = 1
+
+
+def box(win, y, x, h, w):
+
+    win.addstr(y, x, BORDER_CORNER[0])
+    win.addstr(y, x + w - 1, BORDER_CORNER[1])
+    win.addstr(y + h - 1, x + w - 1, BORDER_CORNER[2])
+    win.addstr(y + h - 1, x, BORDER_CORNER[3])
+
+    win.addstr(y, x + 1, BORDER_HORIZ*(w - 2))
+    win.addstr(y + 1, x + w - 1, BORDER_VERT*(h - 2))
+    win.addstr(y + h - 1, x + 1, BORDER_HORIZ*(w - 2))
+    win.addstr(y + 1, x, BORDER_VERT*(h - 2))

@@ -78,7 +78,7 @@ class Process(cs.Panel):
         help_str = 'To quit (does not abort process), press:'
         self.win.addstr(y, x, help_str[:w], color('text'))
         help_str = ' '.join([str(x) for x in QUIT_KEYS])
-        self.win.addstr(y + 1, x, help_str[:w], color('key'))
+        self.win.addstr(y + 1, x, help_str[:w], color('help'))
         self.win.addstr(y + 2, x, status[:w], title_attr)
         h -= 3
         y += 3
