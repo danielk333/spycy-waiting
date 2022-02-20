@@ -45,10 +45,10 @@ class Shape:
 
 
 class Player(Shape):
-    SIZE = (2, 5)
+    SIZE = (2, 1)
     TEXTURE = (
-        '  █  ',
-        '█████',
+        '█',
+        '█',
     )
 
 

@@ -27,6 +27,10 @@ DEFAULT_CONFIG = {
         'correct-letter-color': '9, 11',
         'correct-place-color': '9, 4',
     },
+    'Crusaders': {
+        'player-color': '2, 0',
+        'enemy-color': '11, 0',
+    },
 }
 
 config = configparser.ConfigParser(interpolation=None)
@@ -40,7 +44,7 @@ with open('/home/danielk/git/spycy-waiting/spycy_waiting.conf', 'w') as configfi
 DEFAULT_BACKGROUND = config.getint('General', 'default-background-color')
 
 COLOR_MAPPING = {}
-for category in ['General', 'Wordle']:
+for category in config:
     for key in config[category]:
         if not key.endswith('-color') or key.startswith('default'):
             continue
