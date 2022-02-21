@@ -38,9 +38,6 @@ config.read_dict(DEFAULT_CONFIG)
 if CONFIGFILE.exists() and CONFIGFILE.is_file():
     config.read([CONFIGFILE])
 
-with open('/home/danielk/git/spycy-waiting/spycy_waiting.conf', 'w') as configfile:
-    config.write(configfile)
-
 DEFAULT_BACKGROUND = config.getint('General', 'default-background-color')
 
 COLOR_MAPPING = {}

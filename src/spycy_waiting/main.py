@@ -97,10 +97,12 @@ class Process(cs.Panel):
 
 
 class Game(cs.Application):
-    def __init__(self, cmd, args):
+    def __init__(self, args):
         super().__init__()
         self.args = args
         self.quit_now = False
+        
+        cmd = shlex.split(args.cmd)
 
         coords = {'game': (0, 0)}
         if self.args.horizontal_split:
@@ -202,6 +204,11 @@ def run():
         help='Quit game automatically when process finishes',
     )
     parser.add_argument(
+        '-p', '--procrastinate', 
+        action='store_true', 
+        help='Play the game without running a command',
+    )
+    parser.add_argument(
         '-r', '--refresh-rate', 
         default=0.3, 
         choices=GAME_LIST, help='Time in seconds between game refreshes',
@@ -225,15 +232,11 @@ def run():
     parser.add_argument(
         'cmd', 
         type=str, 
-        help='The command to execute while blastin',
+        help="The command to execute while gamin'",
     )
 
     args = parser.parse_args()
-
-    cmd = shlex.split(args.cmd)
-
     waiter = Game(
-        cmd = cmd,
         args = args,
     )
 
